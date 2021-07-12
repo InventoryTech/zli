@@ -1,5 +1,7 @@
 use std::error::Error;
 use std::fs;
+use std::thread;
+use std::time::Duration;
 
 mod cli;
 
@@ -22,8 +24,22 @@ fn main() -> Result<(), Box<dyn Error>> {
             let context = zmq::Context::new();
 
             let requester = match action {
-                "push" => context.socket(zmq::PUSH).unwrap(),
-                "req" => context.socket(zmq::REQ).unwrap(),
+                "push" => {
+                    let ctx = context.socket(zmq::PUSH).unwrap();
+                    ctx.connect(&format!("tcp://{}:{}", host, port)).unwrap();
+                    ctx
+                }
+                "req" => {
+                    let ctx = context.socket(zmq::REQ).unwrap();
+                    ctx.connect(&format!("tcp://{}:{}", host, port)).unwrap();
+                    ctx
+                }
+                "pub" => {
+                    let ctx = context.socket(zmq::PUB).unwrap();
+                    ctx.bind(&format!("tcp://{}:{}", host, port))
+                        .expect("could not bind publisher socket");
+                    ctx
+                }
                 &_ => context.socket(zmq::REQ).unwrap(),
             };
 
@@ -39,22 +55,26 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
             }
 
-            assert!(requester
-                .connect(&format!("tcp://{}:{}", host, port))
-                .is_ok());
-
-            requester.send(&text, 0).unwrap();
-
             match action {
-                "push" => {}
-                "req" => match requester.recv_string(0).expect("expecting a response") {
-                    Result::Ok(data) => {
-                        println!("{:?}", data)
-                    }
-                    Result::Err(_) => {
-                        println!("{:?}", "-");
-                    }
+                "push" => {
+                    requester.send(&text, 0).unwrap();
+                }              
+                "pub" => {
+                    thread::sleep(Duration::from_millis(250));
+                    requester.send("tpc", zmq::SNDMORE).unwrap();
+                    requester.send(&text, 0).unwrap();
                 },
+                "req" => {
+                    requester.send(&text, 0).unwrap();
+                    match requester.recv_string(0).expect("expecting a response") {
+                        Result::Ok(data) => {
+                            println!("{:?}", data)
+                        }
+                        Result::Err(_) => {
+                            println!("{:?}", "-");
+                        }
+                    }
+                }
                 &_ => unreachable!(),
             };
         }
@@ -69,20 +89,46 @@ fn main() -> Result<(), Box<dyn Error>> {
             let context = zmq::Context::new();
 
             let socket = match action {
-                "pull" => context.socket(zmq::PULL).unwrap(),
-                "rep" => context.socket(zmq::REP).unwrap(),
+                "sub" => {
+                    let ctx = context.socket(zmq::SUB).unwrap();
+                    ctx.set_subscribe(b"tpc").expect("failed subscribing");
+                    ctx.connect(&format!("tcp://{}:{}", host, port))
+                        .expect("failed to subscribe");
+                    ctx
+                }
+                "pull" => {
+                    let ctx = context.socket(zmq::PULL).unwrap();
+                    ctx.bind(&format!("tcp://{}:{}", host, port)).unwrap();
+                    ctx
+                }
+                "rep" => {
+                    let ctx = context.socket(zmq::REP).unwrap();
+                    ctx.bind(&format!("tcp://{}:{}", host, port)).unwrap();
+                    ctx
+                }
                 &_ => context.socket(zmq::PULL).unwrap(),
             };
 
-            socket.bind(&format!("tcp://{}:{}", host, port)).unwrap();
             loop {
                 match socket.recv_string(0).expect("expecting a msg") {
                     Result::Ok(data) => {
-                        println!("{:?}", data);
-
                         match action {
-                            "pull" => {}
+                            "sub" => {
+                                println!("Topic: {:?}", data);
+                                match socket.recv_string(0).expect("expecting a msg") {
+                                    Result::Ok(data) => {
+                                        println!("Content: {:?}", data);
+                                    }
+                                    Result::Err(_) => {
+                                        return Err(Box::from("failed"));
+                                    }
+                                }
+                            }
+                            "pull" => {
+                                println!("Content: {:?}", data);
+                            }
                             "rep" => {
+                                println!("Content: {:?}", data);
                                 socket.send(&data, 0).unwrap();
                             }
                             &_ => {}

@@ -15,9 +15,13 @@ cargo install zli
 ## Usage
 
 ```bash
-zli sink "*" 5555
+zli sink sub localhost 5555
+zli sink rep "*" 5555
+zli sink pull "*" 5555
 ```
 
 ```bash
+zli talk pub "*" 5555 "what it do"
+zli talk req localhost 5555 "what it do"
 zli talk push localhost 5555 "what it do"
 ```
