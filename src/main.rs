@@ -58,12 +58,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             match action {
                 "push" => {
                     requester.send(&text, 0).unwrap();
-                }              
+                }
                 "pub" => {
                     thread::sleep(Duration::from_millis(250));
                     requester.send("tpc", zmq::SNDMORE).unwrap();
                     requester.send(&text, 0).unwrap();
-                },
+                }
                 "req" => {
                     requester.send(&text, 0).unwrap();
                     match requester.recv_string(0).expect("expecting a response") {

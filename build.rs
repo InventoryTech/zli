@@ -8,7 +8,14 @@ use clap_generate::{
 include!("src/cli.rs");
 
 fn main() {
-    let outdir = env!("CARGO_MANIFEST_DIR");
+    let outdir;
+
+    match env::var("OUT_DIR") {
+        Result::Ok(dir) => {
+            outdir = dir;
+        }
+        Result::Err(_err) => return,
+    }
 
     let mut app = build();
     app.set_bin_name(crate_name!());
