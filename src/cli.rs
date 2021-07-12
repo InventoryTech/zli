@@ -25,12 +25,18 @@ pub fn build() -> App<'static> {
         .subcommand(
             App::new("sink")
                 .arg(
-                    Arg::new("HOST")
-                        .about("Sets the input file to use")
+                    Arg::new("ACTION")
+                        .about("Choose action to take")
                         .required(true)
                         .index(1),
                 )
-                .arg(Arg::new("PORT").about("Set port").required(true).index(2)),
+                .arg(
+                    Arg::new("HOST")
+                        .about("Sets the input file to use")
+                        .required(true)
+                        .index(2),
+                )
+                .arg(Arg::new("PORT").about("Set port").required(true).index(3)),
         );
     app
 }

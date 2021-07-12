@@ -1,8 +1,8 @@
 use std::env;
 
 use clap_generate::{
-    generators::{Bash, Zsh},
     generate_to,
+    generators::{Bash, Zsh},
 };
 
 include!("src/cli.rs");

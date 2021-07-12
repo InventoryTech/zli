@@ -1,6 +1,9 @@
 use std::error::Error;
+use std::fs;
 
 mod cli;
+
+const FILEPREFIX: &str = "fileb://";
 
 fn main() -> Result<(), Box<dyn Error>> {
     let app = cli::build();
@@ -14,7 +17,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let action = inner_matcher.value_of("ACTION").unwrap();
             let port = inner_matcher.value_of("PORT").unwrap();
             let host = inner_matcher.value_of("HOST").unwrap();
-            let text = inner_matcher.value_of("TEXT").unwrap();
+            let mut text: String = inner_matcher.value_of("TEXT").unwrap().to_string();
 
             let context = zmq::Context::new();
 
@@ -24,40 +27,75 @@ fn main() -> Result<(), Box<dyn Error>> {
                 &_ => context.socket(zmq::REQ).unwrap(),
             };
 
+            if text.starts_with(FILEPREFIX) {
+                match fs::read_to_string(text.trim_start_matches(FILEPREFIX)) {
+                    Result::Ok(file) => match file.parse::<String>() {
+                        Result::Ok(filecontents) => {
+                            text = filecontents;
+                        }
+                        Result::Err(err) => return Err(Box::new(err)),
+                    },
+                    Result::Err(err) => return Err(Box::new(err)),
+                }
+            }
+
             assert!(requester
                 .connect(&format!("tcp://{}:{}", host, port))
                 .is_ok());
 
-            requester.send(text, 0).unwrap();
+            requester.send(&text, 0).unwrap();
+
+            match action {
+                "push" => {}
+                "req" => match requester.recv_string(0).expect("expecting a response") {
+                    Result::Ok(data) => {
+                        println!("{:?}", data)
+                    }
+                    Result::Err(_) => {
+                        println!("{:?}", "-");
+                    }
+                },
+                &_ => unreachable!(),
+            };
         }
         Some("sink") => {
             let (_name, inner_matcher) = matcher.subcommand().unwrap();
 
+            let action = inner_matcher.value_of("ACTION").unwrap();
             let port = inner_matcher.value_of("PORT").unwrap();
             let host = inner_matcher.value_of("HOST").unwrap();
 
-            println!("Starting sink @ tcp://{}:{}", host, port);
-            let ctx = zmq::Context::new();
-            let socket = ctx.socket(zmq::PULL).unwrap();
+            println!("Starting {} sink at tcp://{}:{}", action, host, port);
+            let context = zmq::Context::new();
+
+            let socket = match action {
+                "pull" => context.socket(zmq::PULL).unwrap(),
+                "rep" => context.socket(zmq::REP).unwrap(),
+                &_ => context.socket(zmq::PULL).unwrap(),
+            };
+
             socket.bind(&format!("tcp://{}:{}", host, port)).unwrap();
             loop {
-                match socket.recv_msg(0) {
+                match socket.recv_string(0).expect("expecting a msg") {
                     Result::Ok(data) => {
-                        let s = match std::str::from_utf8(&data) {
-                            Ok(v) => v,
-                            Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                        };
+                        println!("{:?}", data);
 
-                        println!("{:?}", s)
+                        match action {
+                            "pull" => {}
+                            "rep" => {
+                                socket.send(&data, 0).unwrap();
+                            }
+                            &_ => {}
+                        };
                     }
                     Result::Err(_) => {
-                        println!("{:?}", "-");
+                        return Err(Box::from("failed"));
                     }
                 }
             }
         }
         None => {}
-        _ => unreachable!(), // Assuming you've listed all direct children above, this is unreachable
+        _ => unreachable!(),
     }
     Ok(())
 }
