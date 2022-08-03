@@ -131,10 +131,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                     Result::Ok(data) => {
                         match action {
                             "sub" => {
-                                println!("Topic: {:?}", data);
+                                let topic = data;
                                 match socket.recv_string(0).expect("expecting a msg") {
                                     Result::Ok(data) => {
-                                        println!("Content: {:?}", data);
+                                        println!("[{}] {}", topic, data);
                                     }
                                     Result::Err(_) => {
                                         return Err(Box::from("failed"));
