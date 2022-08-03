@@ -1,16 +1,13 @@
 [package]
 name = 'zli'
-version = '0.0.0'
-authors = ['https://github.com/drbh']
-edition = '2018'
+version = '1.0.0'
+authors = ['https://github.com/InventoryTech/zli']
+edition = '2021'
 description = 'ZMQ command line tool'
 license = 'MIT/Apache-2.0'
-keywords = [
-    'zmq',
-    'cli',
-]
-homepage = 'https://github.com/drbh/zli'
-repository = 'https://github.com/drbh/zli.git'
+keywords = ['zmq', 'cli']
+homepage = 'https://github.com/InventoryTech/zli'
+repository = 'https://github.com/InventoryTech/zli'
 readme = 'README.md'
 
 [dependencies]
