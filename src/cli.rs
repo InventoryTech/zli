@@ -10,7 +10,7 @@ pub fn build() -> App<'static> {
             App::new("talk")
                 .arg(
                     Arg::new("ACTION")
-                        .about("Choose action to take")
+                        .about("Talk action to take (push, req or pub)")
                         .required(true)
                         .index(1),
                 )
@@ -21,13 +21,19 @@ pub fn build() -> App<'static> {
                         .index(2),
                 )
                 .arg(Arg::new("PORT").about("Set port").required(true).index(3))
-                .arg(Arg::new("TEXT").about("Set text").required(true).index(4)),
+                .arg(Arg::new("TEXT").about("Set text").required(true).index(4))
+                .arg(
+                    Arg::new("TOPIC")
+                        .about("Optional topic for pub action")
+                        .required(false)
+                        .index(5),
+                ),
         )
         .subcommand(
             App::new("sink")
                 .arg(
                     Arg::new("ACTION")
-                        .about("Choose action to take")
+                        .about("Sink action to take (pull, rep or sub")
                         .required(true)
                         .index(1),
                 )
@@ -37,7 +43,13 @@ pub fn build() -> App<'static> {
                         .required(true)
                         .index(2),
                 )
-                .arg(Arg::new("PORT").about("Set port").required(true).index(3)),
+                .arg(Arg::new("PORT").about("Set port").required(true).index(3))
+                .arg(
+                    Arg::new("TOPIC")
+                        .about("Optional topic for sub action")
+                        .required(false)
+                        .index(4),
+                ),
         );
     app
 }

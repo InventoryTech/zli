@@ -19,6 +19,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let action = inner_matcher.value_of("ACTION").unwrap();
             let port = inner_matcher.value_of("PORT").unwrap();
             let host = inner_matcher.value_of("HOST").unwrap();
+            let topic = inner_matcher.value_of("TOPIC");
             let mut text: String = inner_matcher.value_of("TEXT").unwrap().to_string();
 
             let context = zmq::Context::new();
@@ -61,7 +62,15 @@ fn main() -> Result<(), Box<dyn Error>> {
                 }
                 "pub" => {
                     thread::sleep(Duration::from_millis(250));
-                    requester.send("tpc", zmq::SNDMORE).unwrap();
+                    match topic {
+                        Some(t) => {
+                            requester.send(t.as_bytes(), zmq::SNDMORE).unwrap();
+                        }
+                        None => {
+                            requester.send("", zmq::SNDMORE).unwrap();
+                        }
+                    }
+
                     requester.send(&text, 0).unwrap();
                 }
                 "req" => {
@@ -84,6 +93,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let action = inner_matcher.value_of("ACTION").unwrap();
             let port = inner_matcher.value_of("PORT").unwrap();
             let host = inner_matcher.value_of("HOST").unwrap();
+            let topic = inner_matcher.value_of("TOPIC");
 
             println!("Starting {} sink at tcp://{}:{}", action, host, port);
             let context = zmq::Context::new();
@@ -91,7 +101,14 @@ fn main() -> Result<(), Box<dyn Error>> {
             let socket = match action {
                 "sub" => {
                     let ctx = context.socket(zmq::SUB).unwrap();
-                    ctx.set_subscribe(b"tpc").expect("failed subscribing");
+                    match topic {
+                        Some(t) => {
+                            ctx.set_subscribe(t.as_bytes()).expect("failed subscribing");
+                        }
+                        None => {
+                            ctx.set_subscribe(b"").expect("failed subscribing");
+                        }
+                    }
                     ctx.connect(&format!("tcp://{}:{}", host, port))
                         .expect("failed to subscribe");
                     ctx
