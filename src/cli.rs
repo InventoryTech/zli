@@ -1,10 +1,11 @@
-use clap::{crate_authors, crate_description, crate_name, crate_version, App, Arg};
+use clap::{crate_authors, crate_description, crate_name, crate_version, App, AppSettings, Arg};
 
 pub fn build() -> App<'static> {
     let app = App::new(crate_name!())
         .version(crate_version!())
         .author(crate_authors!())
         .about(crate_description!())
+        .setting(AppSettings::ArgRequiredElseHelp)
         .subcommand(
             App::new("talk")
                 .arg(
